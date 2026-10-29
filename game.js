@@ -51,7 +51,7 @@
   function ensureAudio() {
     if (audio) { if (audio.state === 'suspended') audio.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) audio = new AC();
+    if (AC) { audio = new AC(); loadBark(); }
   }
 
   function tone(freqStart, freqEnd, dur, type, vol, delay = 0) {
@@ -86,29 +86,82 @@
     src.start();
   }
 
-  function woof() {
-    if (!audio || muted) return;
-    const t = audio.currentTime;
+  // Drop a recording of her bark in as bark.mp3 and it will be used instead of the synth.
+  let barkBuffer = null;
+  function loadBark() {
+    fetch('bark.mp3')
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+      .then((data) => new Promise((ok, fail) => audio.decodeAudioData(data, ok, fail)))
+      .then((buf) => { barkBuffer = buf; })
+      .catch(() => {});
+  }
+
+  // one small-dog "arf": a pitched, buzzy voice shaped by two mouth formants plus breath
+  function arf(t, pitch, vol) {
+    const dur = 0.13;
+    const out = audio.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    out.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.05);
+    out.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    out.connect(audio.destination);
+
     const osc = audio.createOscillator();
-    const filter = audio.createBiquadFilter();
-    const gain = audio.createGain();
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(520, t);
-    osc.frequency.exponentialRampToValueAtTime(190, t + 0.16);
-    filter.type = 'lowpass';
-    filter.frequency.value = 1400;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    osc.connect(filter).connect(gain).connect(audio.destination);
+    osc.frequency.setValueAtTime(pitch * 0.8, t);
+    osc.frequency.linearRampToValueAtTime(pitch * 1.25, t + 0.03);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 0.6, t + dur);
+    for (const [f, q, g] of [[1100, 5, 1], [2400, 7, 0.6]]) {
+      const bp = audio.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(f * 0.7, t);
+      bp.frequency.linearRampToValueAtTime(f, t + 0.04);
+      bp.Q.value = q;
+      const gg = audio.createGain();
+      gg.gain.value = g * 2.5;
+      osc.connect(bp).connect(gg).connect(out);
+    }
     osc.start(t);
-    osc.stop(t + 0.2);
+    osc.stop(t + dur + 0.02);
+
+    const nbuf = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.05), audio.sampleRate);
+    const nd = nbuf.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
+    const noise = audio.createBufferSource();
+    noise.buffer = nbuf;
+    const hp = audio.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 1800;
+    const ng = audio.createGain();
+    ng.gain.value = 0.35;
+    noise.connect(hp).connect(ng).connect(out);
+    noise.start(t);
+  }
+
+  function bark() {
+    if (!audio || muted) return;
+    if (barkBuffer) {
+      const src = audio.createBufferSource();
+      src.buffer = barkBuffer;
+      src.connect(audio.destination);
+      src.start();
+      return;
+    }
+    const t = audio.currentTime;
+    arf(t, 420, 0.5);
+    arf(t + 0.17, 470, 0.45);
+  }
+
+  function yip() {
+    if (!audio || muted) return;
+    arf(audio.currentTime, 620, 0.25);
   }
 
   const sfx = {
     flap: () => whoosh(),
     point: () => { tone(880, 880, 0.08, 'square', 0.08); tone(1320, 1320, 0.12, 'square', 0.08, 0.08); },
-    hit: () => { tone(160, 60, 0.25, 'triangle', 0.4); woof(); },
+    treat: () => { tone(990, 1480, 0.12, 'sine', 0.12); yip(); },
+    hit: () => { tone(160, 60, 0.25, 'triangle', 0.4); bark(); },
   };
 
   muteBtn.addEventListener('pointerdown', (e) => {
@@ -119,17 +172,24 @@
   });
 
   // ---------- Game constants ----------
-  const GRAVITY = 1450;
-  const FLAP_VY = -440;
-  const MAX_FALL = 720;
+  const GRAVITY = 1300;
+  const FLAP_VY = -410;
+  const MAX_FALL = 650;
   const OBST_W = 60;
-  const SPACING = 235;
-  const BASE_SPEED = 155;
+  const SPACING = 255;
+  const BASE_SPEED = 135;
+  const TREAT_CHANCE = 0.6;
+  const MEDALS = [
+    { at: 50, name: 'PLATINUM', color: '#dfe9f2', rim: '#9fb4c7' },
+    { at: 30, name: 'GOLD', color: '#ffd34d', rim: '#c99a12' },
+    { at: 20, name: 'SILVER', color: '#d7dbe0', rim: '#9aa1a9' },
+    { at: 10, name: 'BRONZE', color: '#e2995a', rim: '#a8622a' },
+  ];
   const DOG_X = 120;
 
   // ---------- State ----------
   let state = 'ready';      // ready | play | dying | over
-  let dog, obstacles, score, best = loadBest(), speed, worldX, overTimer, flash, newBest;
+  let dog, obstacles, treats, popups, score, best = loadBest(), speed, worldX, overTimer, flash, newBest;
   const clouds = Array.from({ length: 6 }, (_, i) => ({
     x: i * 140 + Math.random() * 60,
     y: 40 + Math.random() * 180,
@@ -139,6 +199,8 @@
   function reset() {
     dog = { y: H * 0.42, vy: 0, rot: 0, earT: 1, earAngle: 0.3, legT: 0, bob: 0 };
     obstacles = [];
+    treats = [];
+    popups = [];
     score = 0;
     speed = BASE_SPEED;
     overTimer = 0;
@@ -149,7 +211,7 @@
   worldX = 0;
 
   function gapSize() {
-    return Math.max(140, 172 - score * 1.2);
+    return Math.max(170, 205 - score * 0.7);
   }
 
   function spawnObstacle(x) {
@@ -158,6 +220,10 @@
     const maxTop = groundY - gap - 70;
     const top = minTop + Math.random() * (maxTop - minTop);
     obstacles.push({ x, top, bottom: top + gap, scored: false });
+    // a bone treat floats between this gap and the next one
+    if (Math.random() < TREAT_CHANCE) {
+      treats.push({ x: x + OBST_W + (SPACING - OBST_W) / 2, y: top + gap / 2 + (Math.random() - 0.5) * 60, t: Math.random() * 6 });
+    }
   }
 
   // ---------- Input ----------
@@ -244,7 +310,7 @@
     }
 
     if (state === 'play') {
-      speed = BASE_SPEED + Math.min(60, score * 2);
+      speed = BASE_SPEED + Math.min(35, score * 0.8);
       worldX += speed * dt;
       for (const o of obstacles) {
         o.x -= speed * dt;
@@ -255,6 +321,20 @@
         }
       }
       if (obstacles.length && obstacles[0].x < -OBST_W - 40) obstacles.shift();
+
+      const circles = dogCircles();
+      for (const tr of treats) {
+        tr.x -= speed * dt;
+        if (tr.taken) continue;
+        const ty = tr.y + Math.sin(tr.t * 3) * 6;
+        if (circles.some((c) => (c.x - tr.x) ** 2 + (c.y - ty) ** 2 < (c.r + 14) ** 2)) {
+          tr.taken = true;
+          score++;
+          popups.push({ x: tr.x, y: ty, life: 1 });
+          sfx.treat();
+        }
+      }
+      treats = treats.filter((tr) => !tr.taken && tr.x > -40);
       const last = obstacles[obstacles.length - 1];
       if (last && last.x < W + 60 - SPACING) spawnObstacle(last.x + SPACING);
 
@@ -280,6 +360,9 @@
     }
 
     if (state === 'over') overTimer += dt;
+    for (const tr of treats) tr.t += dt;
+    for (const p of popups) { p.life -= dt * 1.4; p.y -= dt * 50; }
+    popups = popups.filter((p) => p.life > 0);
     flash = Math.max(0, flash - dt * 3);
 
     // ears: a quick flap after each tap, otherwise they trail in the wind
@@ -474,6 +557,41 @@
     ctx.beginPath();
     ctx.arc(cx, topY + 66, 8, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  function boneShape(grow) {
+    ctx.beginPath();
+    ctx.rect(-12, -4 - grow, 24, 8 + grow * 2);
+    for (const [bx, by] of [[-12, -5], [-12, 5], [12, -5], [12, 5]]) {
+      ctx.moveTo(bx + 6 + grow, by);
+      ctx.arc(bx, by, 6 + grow, 0, Math.PI * 2);
+    }
+  }
+
+  function drawBoneShape(x, y, rot) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.fillStyle = 'rgba(255, 236, 140, 0.4)';
+    ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6b4a2e';
+    boneShape(2);
+    ctx.fill();
+    ctx.fillStyle = '#fff6e0';
+    boneShape(0);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(214, 180, 130, 0.6)';
+    ctx.fillRect(-12, 1, 24, 3);
+    ctx.restore();
+  }
+
+  function drawTreats() {
+    for (const tr of treats) drawBoneShape(tr.x, tr.y + Math.sin(tr.t * 3) * 6, Math.sin(tr.t * 2) * 0.25);
+    for (const p of popups) {
+      ctx.globalAlpha = Math.max(0, p.life);
+      outlinedText('+1', p.x, p.y, 22, '#ffd36b');
+      ctx.globalAlpha = 1;
+    }
   }
 
   function drawObstacles() {
@@ -693,6 +811,39 @@
     ctx.closePath();
   }
 
+  function drawPaw(x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.25, r * 0.42, r * 0.34, 0, 0, Math.PI * 2);
+    for (const [dx, dy] of [[-0.42, -0.2], [-0.15, -0.45], [0.15, -0.45], [0.42, -0.2]]) {
+      ctx.moveTo(x + dx * r + r * 0.15, y + dy * r);
+      ctx.arc(x + dx * r, y + dy * r, r * 0.15, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+
+  function drawMedal(x, y, medal) {
+    if (!medal) {
+      ctx.fillStyle = '#eadfcb';
+      ctx.beginPath(); ctx.arc(x, y, 32, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#b3a38a';
+      ctx.font = '700 11px "Trebuchet MS", system-ui, sans-serif';
+      ctx.fillText(`${MEDALS[MEDALS.length - 1].at} for bronze`, x, y + 4);
+      return;
+    }
+    const shine = 0.5 + 0.5 * Math.sin(overTimer * 4);
+    ctx.fillStyle = medal.rim;
+    ctx.beginPath(); ctx.arc(x, y, 34, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = medal.color;
+    ctx.beginPath(); ctx.arc(x, y, 28, 0, Math.PI * 2); ctx.fill();
+    drawPaw(x, y - 3, 30, medal.rim);
+    ctx.fillStyle = `rgba(255,255,255,${0.35 + shine * 0.4})`;
+    ctx.beginPath(); ctx.arc(x - 14, y - 14, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = medal.rim;
+    ctx.font = '800 12px "Trebuchet MS", system-ui, sans-serif';
+    ctx.fillText(medal.name, x, y + 50);
+  }
+
   function drawUI() {
     const top = 70;
     if (state === 'ready') {
@@ -709,18 +860,20 @@
       ctx.fillStyle = '#fff6e3';
       ctx.strokeStyle = '#3a2219';
       ctx.lineWidth = 4;
-      roundRect(W / 2 - 120, py + 40, 240, 130, 18);
+      roundRect(W / 2 - 140, py + 40, 280, 160, 18);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#7b4429';
-      ctx.font = '800 18px "Trebuchet MS", system-ui, sans-serif';
+      ctx.font = '800 16px "Trebuchet MS", system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('SCORE', W / 2 - 55, py + 66);
-      ctx.fillText('BEST', W / 2 + 55, py + 66);
-      outlinedText(String(score), W / 2 - 55, py + 108, 40);
-      outlinedText(String(best), W / 2 + 55, py + 108, 40, newBest ? '#ffd36b' : '#fff');
-      if (newBest) outlinedText('NEW BEST!', W / 2, py + 152, 18, '#ffd36b');
-      if (overTimer > 0.6) outlinedText('Tap to play again', W / 2, py + 210, 24);
+      ctx.fillText('MEDAL', W / 2 - 70, py + 64);
+      ctx.fillText('SCORE', W / 2 + 70, py + 64);
+      ctx.fillText('BEST', W / 2 + 70, py + 132);
+      drawMedal(W / 2 - 70, py + 125, MEDALS.find((m) => score >= m.at));
+      outlinedText(String(score), W / 2 + 70, py + 96, 32);
+      outlinedText(String(best), W / 2 + 70, py + 164, 32, newBest ? '#ffd36b' : '#fff');
+      if (newBest) outlinedText('NEW BEST!', W / 2, py + 228, 22, '#ffd36b');
+      if (overTimer > 0.6) outlinedText('Tap to play again', W / 2, py + 270, 24);
       ctx.globalAlpha = 1;
     }
   }
@@ -731,6 +884,7 @@
     drawHills();
     drawTrees();
     drawObstacles();
+    drawTreats();
     drawGround();
     drawDachshund(DOG_X, dog.y, dog.rot, dog.earAngle, dog.legT);
     drawUI();

@@ -1,5 +1,5 @@
 // Offline cache so the game works like an app once it's been opened.
-const CACHE = 'flappy-dox-v1';
+const CACHE = 'flappy-dox-v2';
 const FILES = [
   './',
   'index.html',
