@@ -7,6 +7,6 @@ Play it on your phone, then use **Share → Add to Home Screen** to install it l
 
 ---
 
-# Task Zoo 🦒
+# To Zoo List 🦒
 
-This repo also holds **[Task Zoo](task-zoo/)**, a task tracker where every task is an animal that grows as you make progress. See [`task-zoo/README.md`](task-zoo/README.md).
+This repo also holds **[To Zoo List](task-zoo/)**, a task tracker where every task is an animal that grows as you make progress. See [`task-zoo/README.md`](task-zoo/README.md).

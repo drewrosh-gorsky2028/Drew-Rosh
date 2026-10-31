@@ -1,4 +1,4 @@
-# Task Zoo
+# To Zoo List
 
 A cozy task tracker where every task is an animal.
 
@@ -45,11 +45,11 @@ Or drag the `task-zoo/dist` folder onto <https://app.netlify.com/drop> after run
 
 ### GitHub Pages
 
-The workflow at `.github/workflows/deploy-pages.yml` publishes the whole repo: Flappy Dox at `/` and Task Zoo at `/task-zoo/`.
+The workflow at `.github/workflows/deploy-pages.yml` publishes the whole repo: Flappy Dox at `/` and To Zoo List at `/task-zoo/`.
 
 1. In the GitHub repo, go to **Settings → Pages** and set **Source** to **GitHub Actions**.
 2. Go to **Actions → Deploy to GitHub Pages → Run workflow**.
-3. Task Zoo will be at `https://<your-username>.github.io/<repo>/task-zoo/`.
+3. To Zoo List will be at `https://<your-username>.github.io/<repo>/task-zoo/`.
 
 To deploy on every push to `main`, uncomment the `push:` lines in the workflow.
 

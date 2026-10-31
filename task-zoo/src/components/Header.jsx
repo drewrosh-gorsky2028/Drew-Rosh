@@ -39,7 +39,7 @@ export function Header({ onOpenShop, onOpenCategories }) {
           <path d="M25 30 v20 M32 30 v20 M39 30 v20" stroke="#5a3d2b" strokeWidth="2.4" />
         </svg>
         <h1>
-          Task <span>Zoo</span>
+          To <span>Zoo</span> List
         </h1>
       </div>
 

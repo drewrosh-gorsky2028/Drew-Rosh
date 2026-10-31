@@ -1,6 +1,6 @@
 # Publishes the whole site to GitHub Pages:
 #   /            → Flappy Dox (the static files in the repo root)
-#   /task-zoo/   → Task Zoo (built with Vite)
+#   /task-zoo/   → To Zoo List (built with Vite)
 # One-time setup: Settings → Pages → Source: "GitHub Actions".
 # Then run it from the Actions tab (or uncomment `push` to deploy on every push to main).
 name: Deploy to GitHub Pages
@@ -29,7 +29,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: task-zoo/package-lock.json
-      - name: Build Task Zoo
+      - name: Build To Zoo List
         working-directory: task-zoo
         run: |
           npm ci
