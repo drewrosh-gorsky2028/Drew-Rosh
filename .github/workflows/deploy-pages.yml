@@ -1,0 +1,56 @@
+# Publishes the whole site to GitHub Pages:
+#   /            → Flappy Dox (the static files in the repo root)
+#   /task-zoo/   → Task Zoo (built with Vite)
+# One-time setup: Settings → Pages → Source: "GitHub Actions".
+# Then run it from the Actions tab (or uncomment `push` to deploy on every push to main).
+name: Deploy to GitHub Pages
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: task-zoo/package-lock.json
+      - name: Build Task Zoo
+        working-directory: task-zoo
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Assemble site
+        run: |
+          mkdir -p _site/task-zoo
+          cp index.html game.js style.css sw.js manifest.json _site/
+          cp -r icons _site/
+          cp -r task-zoo/dist/. _site/task-zoo/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

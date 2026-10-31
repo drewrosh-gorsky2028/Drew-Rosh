@@ -1,0 +1,4 @@
+# Used when Netlify's "Base directory" is set to task-zoo.
+[build]
+  command = "npm run build"
+  publish = "dist"
