@@ -21,3 +21,10 @@ describe('tasks', () => {
     expect(removeTask([a, b], a.id)).toEqual([b]);
   });
 });
+
+describe('lists', () => {
+  it('puts a new task in the chosen list', () => {
+    expect(newTask('A', 'week').list).toBe('week');
+    expect(newTask('B').list).toBe('day');
+  });
+});

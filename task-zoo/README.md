@@ -2,7 +2,8 @@
 
 A simple to-do list.
 
-- Type a task and press **Add**.
+- Pick a list at the top: **Today**, **This week** or **Long term**. The number shows how many tasks are left in each.
+- Type a task and press **Add**. It goes into the list you're looking at.
 - Tap the circle to finish it. It moves to **Done**.
 - Tap the circle again to undo, or **×** to delete.
 
@@ -59,12 +60,12 @@ src/
   main.jsx        entry point
   App.jsx         the whole screen: add form, task list, done list
   styles.css      all styling
-  lib/tasks.js    create / finish / delete tasks, load and save
+  lib/tasks.js    the three lists, create / finish / delete tasks, load and save
   lib/id.js       unique ids
 ```
 
 Saved data (`localStorage["to-zoo-list:v1"]`, the key is from the app's earlier name):
 
 ```js
-{ version: 1, tasks: [{ id, title, createdAt, completedAt /* null until done */ }] }
+{ version: 1, tasks: [{ id, title, list: 'day' | 'week' | 'long', createdAt, completedAt /* null until done */ }] }
 ```

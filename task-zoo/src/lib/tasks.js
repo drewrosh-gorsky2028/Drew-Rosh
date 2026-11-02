@@ -3,10 +3,17 @@ import { uid } from './id.js';
 // Kept from the earlier name so lists saved before the rename still load.
 export const STORAGE_KEY = 'to-zoo-list:v1';
 
-export function newTask(title) {
+export const LISTS = [
+  { id: 'day', name: 'Today' },
+  { id: 'week', name: 'This week' },
+  { id: 'long', name: 'Long term' },
+];
+
+export function newTask(title, list = 'day') {
   return {
     id: uid('task'),
     title: title.trim(),
+    list,
     createdAt: new Date().toISOString(),
     completedAt: null,
   };
@@ -25,7 +32,9 @@ export function removeTask(tasks, id) {
 export function loadTasks() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(saved?.tasks) ? saved.tasks : [];
+    if (!Array.isArray(saved?.tasks)) return [];
+    // Tasks saved before there were separate lists go into Today.
+    return saved.tasks.map((t) => ({ list: 'day', ...t }));
   } catch {
     return [];
   }
