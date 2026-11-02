@@ -1,117 +1,81 @@
-import { useCallback, useState } from 'react';
-import { useZoo } from './state/ZooContext.jsx';
-import { Header } from './components/Header.jsx';
-import { Nursery } from './components/Nursery.jsx';
-import { Zoo } from './components/Zoo.jsx';
-import { TaskList } from './components/TaskList.jsx';
-import { TaskForm } from './components/TaskForm.jsx';
-import { AnimalCard } from './components/AnimalCard.jsx';
-import { CategoryManager } from './components/CategoryManager.jsx';
-import { Shop } from './components/Shop.jsx';
-import { Celebration } from './components/Celebration.jsx';
-import { Icon } from './components/ui/Icon.jsx';
+import { useEffect, useState } from 'react';
+import { AnimalSprite } from './components/animals/AnimalSprite.jsx';
+import { loadTasks, newTask, removeTask, saveTasks, toggleDone } from './lib/tasks.js';
 
-const TABS = [
-  { id: 'nursery', label: 'Nursery', icon: 'egg' },
-  { id: 'zoo', label: 'Zoo', icon: 'zoo' },
-  { id: 'list', label: 'List', icon: 'list' },
-];
+function TaskRow({ task, onToggle, onRemove }) {
+  const done = !!task.completedAt;
+  return (
+    <li className={`row ${done ? 'row--done' : ''}`}>
+      <AnimalSprite animal={task.animal} stage={done ? 2 : 0} size={56} />
+      <span className="row-title">{task.title}</span>
+      <button
+        className={`check ${done ? 'check--on' : ''}`}
+        onClick={() => onToggle(task.id)}
+        aria-label={done ? `Mark “${task.title}” as not done` : `Finish “${task.title}”`}
+      />
+      <button className="remove" onClick={() => onRemove(task.id)} aria-label={`Delete “${task.title}”`}>
+        ×
+      </button>
+    </li>
+  );
+}
 
 export function App() {
-  const { state, dispatch } = useZoo();
-  // Which section shows on phones (desktop shows everything side by side).
-  const [view, setView] = useState('nursery');
-  // { type: 'form' | 'card' | 'categories' | 'shop', taskId? }
-  const [modal, setModal] = useState(null);
-  const [celebrating, setCelebrating] = useState(null);
-  const [decorating, setDecorating] = useState(false);
+  const [tasks, setTasks] = useState(loadTasks);
+  const [text, setText] = useState('');
 
-  const close = useCallback(() => setModal(null), []);
-  const openTask = useCallback((id) => setModal({ type: 'card', taskId: id }), []);
-  const addTask = useCallback(() => setModal({ type: 'form' }), []);
-  const openShop = useCallback(() => setModal({ type: 'shop' }), []);
+  useEffect(() => saveTasks(tasks), [tasks]);
 
-  const complete = useCallback(
-    (id) => {
-      dispatch({ type: 'COMPLETE_TASK', id });
-      setModal(null);
-      setCelebrating(id);
-    },
-    [dispatch],
-  );
-
-  const endCelebration = useCallback(() => setCelebrating(null), []);
-
-  const visitZoo = (taskId) => {
-    const task = state.tasks.find((t) => t.id === taskId);
-    setCelebrating(null);
-    setView('zoo');
-    requestAnimationFrame(() =>
-      document.getElementById(`habitat-${task?.categoryId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-    );
+  const add = (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setTasks((all) => [newTask(text), ...all]);
+    setText('');
   };
 
+  const toggle = (id) => setTasks((all) => toggleDone(all, id));
+  const remove = (id) => setTasks((all) => removeTask(all, id));
+
+  const open = tasks.filter((t) => !t.completedAt);
+  const done = tasks
+    .filter((t) => t.completedAt)
+    .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+
   return (
-    <div className="app">
-      <Header onOpenShop={openShop} onOpenCategories={() => setModal({ type: 'categories' })} />
+    <main className="page">
+      <h1>To Zoo List</h1>
 
-      <main className={`layout view-${view}`}>
-        <div className="layout-main">
-          <div className="panel panel--nursery">
-            <Nursery onOpenTask={openTask} onAddTask={addTask} />
-          </div>
-          <div className="panel panel--zoo">
-            <Zoo onOpenTask={openTask} onOpenShop={openShop} decorating={decorating} setDecorating={setDecorating} />
-          </div>
-        </div>
-        <aside className="panel panel--list">
-          <TaskList onOpenTask={openTask} onComplete={complete} onAddTask={addTask} />
-        </aside>
-      </main>
+      <form className="add" onSubmit={add}>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="What do you need to do?"
+          aria-label="New task"
+          maxLength={120}
+        />
+        <button type="submit">Add</button>
+      </form>
 
-      <button className="fab" onClick={addTask} aria-label="Add a task">
-        <Icon name="plus" size={28} />
-      </button>
+      {open.length === 0 && done.length === 0 && (
+        <p className="empty">Add a task and a baby animal will keep you company until it’s done.</p>
+      )}
 
-      <nav className="tabbar" aria-label="Sections">
-        {TABS.map((t) => (
-          <button key={t.id} className={view === t.id ? 'is-active' : ''} onClick={() => setView(t.id)} aria-current={view === t.id}>
-            <Icon name={t.icon} size={22} />
-            <span>{t.label}</span>
-          </button>
+      <ul className="list">
+        {open.map((t) => (
+          <TaskRow key={t.id} task={t} onToggle={toggle} onRemove={remove} />
         ))}
-      </nav>
+      </ul>
 
-      {modal?.type === 'form' && (
-        <TaskForm
-          taskId={modal.taskId}
-          onClose={close}
-          onSaved={(id) => {
-            setModal(modal.taskId ? { type: 'card', taskId: id } : null);
-            if (!modal.taskId) setView((v) => (v === 'zoo' ? 'nursery' : v));
-          }}
-        />
+      {done.length > 0 && (
+        <>
+          <h2>Done</h2>
+          <ul className="list">
+            {done.map((t) => (
+              <TaskRow key={t.id} task={t} onToggle={toggle} onRemove={remove} />
+            ))}
+          </ul>
+        </>
       )}
-      {modal?.type === 'card' && (
-        <AnimalCard
-          taskId={modal.taskId}
-          onClose={close}
-          onEdit={(id) => setModal({ type: 'form', taskId: id })}
-          onComplete={complete}
-        />
-      )}
-      {modal?.type === 'categories' && <CategoryManager onClose={close} />}
-      {modal?.type === 'shop' && (
-        <Shop
-          onClose={close}
-          onDecorate={() => {
-            setModal(null);
-            setDecorating(true);
-            setView('zoo');
-          }}
-        />
-      )}
-      {celebrating && <Celebration taskId={celebrating} onClose={endCelebration} onVisit={() => visitZoo(celebrating)} />}
-    </div>
+    </main>
   );
 }

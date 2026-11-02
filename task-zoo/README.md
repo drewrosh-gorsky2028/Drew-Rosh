@@ -1,15 +1,14 @@
 # To Zoo List
 
-A cozy task tracker where every task is an animal.
+A simple to-do list where every task has an animal.
 
-- **Add a task** and an egg hatches into a baby animal in the **Nursery**.
-- **Check off subtasks** and it grows: baby → juvenile (⅓ done) → adult (all done). Each stage is bigger and has more detail.
-- **Complete the task** and the adult moves into its category's **habitat** in the zoo, where it wanders around. You earn coins too.
-- **Overdue tasks** make their animal sleepy (droopy, eyes closed, floating Zzz, a "!" bubble). Animals never die; a bit of progress perks them up.
-- **Tap any animal** to see its card: task name, notes, subtasks, due date, hatch date, completion date.
-- **Spend coins** in the shop on trees, rocks, ponds, paths, benches, fences and flowers, then drag them into your habitats.
+- Type a task and press **Add**. A random baby animal appears next to it.
+- Tap the circle to finish it. The animal grows up and the task moves to **Done**.
+- Tap the circle again to undo, or **×** to delete.
 
-All art is hand-drawn SVG in the code. There are no image files or external assets. Everything is saved in your browser's `localStorage`.
+Your list is saved in your browser's `localStorage`. All animals are hand-drawn SVG in the code, with no image files.
+
+We're building this piece by piece. Subtasks, a zoo view, coins and decorations were in an earlier version and can come back one at a time (see git history).
 
 ## Run it locally
 
@@ -26,7 +25,7 @@ To try it on your phone, run `npm run dev -- --host` and open the "Network" URL 
 Other scripts:
 
 ```bash
-npm test           # unit tests (growth, coins, streaks, storage)
+npm test           # unit tests
 npm run build      # production build into dist/
 npm run preview    # serve the production build locally
 ```
@@ -60,63 +59,20 @@ To deploy on every push to `main`, uncomment the `push:` lines in the workflow.
 ```
 src/
   main.jsx                 entry point
-  App.jsx                  layout, which modal is open, phone tabs, celebration
-  styles.css               all styling (tokens at the top, responsive rules at the bottom)
-  state/
-    defaults.js            starting state, storage key
-    reducer.js             every change to the data (add/complete tasks, buy/place decor…)
-    storage.js             load/save to localStorage and repair older saves
-    ZooContext.jsx         React context with useReducer, saves on every change
-  lib/
-    growth.js              growth stage and overdue rules
-    stats.js               animals collected, done this week, streak
-    dates.js               local-date helpers
-  data/
-    sizes.js               size tiers: coin rewards and habitat scale
-    zones.js               terrain zones
-    decorations.js         shop catalogue (name, price, size)
-  components/
-    animals/               one drawing per animal, the registry, AnimalSprite wrapper, Egg
-    scenery/               zone terrains and decoration drawings
-    ui/                    Modal and the icon set
-    Header, Nursery, Zoo, Wanderer, TaskList, TaskForm,
-    AnimalCard, CategoryManager, Shop, Celebration
+  App.jsx                  the whole screen: add form, task list, done list
+  styles.css               all styling
+  lib/tasks.js             create / finish / delete tasks, load and save
+  lib/id.js                ids and random picks
+  components/animals/      one drawing per animal, the registry (index.js), AnimalSprite
 ```
 
-### Data model (`localStorage["task-zoo:v1"]`)
+Saved data (`localStorage["to-zoo-list:v1"]`):
 
 ```js
-{
-  version: 1,
-  coins: 85,
-  categories: [{ id, name, zone: 'savanna' | 'arctic' | 'jungle' | 'ocean' }],
-  tasks: [{
-    id, title, notes,
-    size: 'small' | 'medium' | 'large',
-    animal: 'panda',               // key in components/animals/index.js
-    categoryId,
-    dueDate: '2026-11-04' | null,  // local calendar day
-    subtasks: [{ id, text, done }],
-    createdAt, completedAt,        // ISO timestamps (completedAt is null while growing)
-    coinsAwarded,                  // refunded if you send the animal back to the nursery
-  }],
-  decorations: [{ id, kind: 'tree', habitatId | null, x, y }], // x/y are % of the habitat; null habitatId = in storage
-  pastCompletions: ['2026-10-30'], // keeps streak/week stats when a finished task is deleted
-}
+{ version: 1, tasks: [{ id, title, animal: 'panda', createdAt, completedAt /* null until done */ }] }
 ```
 
 ### Add a new animal
 
-1. Draw a component in `components/animals/small.jsx`, `medium.jsx` or `large.jsx`. It gets `stage` (0 baby, 1 juvenile, 2 adult) and `sleepy`. Draw in a 120×120 box with the feet near `y = 112`. Use the helpers in `parts.jsx` (`Eye`, `Blush`, `Smile`, `Tube`, `line`) so it matches the house style. Add detail as `stage` goes up.
-2. Register it in `components/animals/index.js` with its size tier.
-
-It then shows up in the animal picker, the nursery and the zoo.
-
-### Add a new decoration
-
-1. Add an entry to `data/decorations.js` (`id`, `name`, `price`, display width `w`).
-2. Add the drawing with the same `id` to the `ART` map in `components/scenery/Decorations.jsx`.
-
-### Add a new zone
-
-Add it to `data/zones.js` and add a terrain drawing to `TERRAINS` in `components/scenery/Terrain.jsx`.
+1. Draw a component in `components/animals/small.jsx`, `medium.jsx` or `large.jsx`. It gets `stage` (0 baby, 2 grown-up). Draw in a 120×120 box with the feet near `y = 112`, using the helpers in `parts.jsx` (`Eye`, `Blush`, `Smile`, `Tube`, `line`).
+2. Register it in `components/animals/index.js`.

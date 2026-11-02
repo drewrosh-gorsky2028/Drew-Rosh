@@ -3,11 +3,8 @@ import { ANIMALS } from './index.js';
 
 const STAGE_SCALE = [0.62, 0.82, 1];
 
-/**
- * Renders any registered animal at a growth stage.
- * Plays a "grow" pop + sparkles whenever the stage increases.
- */
-export function AnimalSprite({ animal, stage = 0, sleepy = false, size = 80, className = '', title }) {
+/** Draws a registered animal at a growth stage, with a little pop when it grows. */
+export function AnimalSprite({ animal, stage = 0, size = 80 }) {
   const def = ANIMALS[animal] || ANIMALS.bunny;
   const Draw = def.Draw;
   const prev = useRef(stage);
@@ -16,7 +13,7 @@ export function AnimalSprite({ animal, stage = 0, sleepy = false, size = 80, cla
   useEffect(() => {
     if (stage > prev.current) {
       setGrowing(true);
-      const t = setTimeout(() => setGrowing(false), 1000);
+      const t = setTimeout(() => setGrowing(false), 800);
       prev.current = stage;
       return () => clearTimeout(t);
     }
@@ -25,31 +22,19 @@ export function AnimalSprite({ animal, stage = 0, sleepy = false, size = 80, cla
 
   return (
     <div
-      className={`sprite ${sleepy ? 'sprite--sleepy' : ''} ${growing ? 'sprite--growing' : ''} ${className}`}
+      className={`sprite ${growing ? 'sprite--growing' : ''}`}
       style={{ width: size, height: size }}
       role="img"
-      aria-label={title || `${def.name} (${['baby', 'juvenile', 'adult'][stage]})`}
+      aria-label={`${stage === 2 ? 'Grown-up' : 'Baby'} ${def.name.toLowerCase()}`}
     >
-      <div className="sprite-body" style={{ transform: `scale(${STAGE_SCALE[stage]})` }}>
-        <svg viewBox="0 0 120 120" className="sprite-svg" overflow="visible">
-          <ellipse cx="60" cy="114" rx="34" ry="5" fill="rgba(70,40,20,.15)" />
-          <Draw stage={stage} sleepy={sleepy} />
-        </svg>
-      </div>
-      {sleepy && (
-        <div className="zzz" aria-hidden="true">
-          <span>z</span>
-          <span>z</span>
-          <span>Z</span>
-        </div>
-      )}
-      {growing && (
-        <div className="sparkles" aria-hidden="true">
-          {Array.from({ length: 8 }, (_, i) => (
-            <i key={i} style={{ '--a': `${i * 45}deg` }} />
-          ))}
-        </div>
-      )}
+      <svg
+        viewBox="0 0 120 120"
+        className="sprite-svg"
+        overflow="visible"
+        style={{ transform: `scale(${STAGE_SCALE[stage]})` }}
+      >
+        <Draw stage={stage} />
+      </svg>
     </div>
   );
 }
