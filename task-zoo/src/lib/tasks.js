@@ -1,13 +1,12 @@
-import { ANIMAL_LIST } from '../components/animals/index.js';
-import { pick, uid } from './id.js';
+import { uid } from './id.js';
 
+// Kept from the earlier name so lists saved before the rename still load.
 export const STORAGE_KEY = 'to-zoo-list:v1';
 
 export function newTask(title) {
   return {
     id: uid('task'),
     title: title.trim(),
-    animal: pick(ANIMAL_LIST).id,
     createdAt: new Date().toISOString(),
     completedAt: null,
   };

@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { newTask, removeTask, toggleDone } from '../lib/tasks.js';
-import { ANIMALS } from '../components/animals/index.js';
 
 describe('tasks', () => {
-  it('creates a task with a trimmed title and a real animal', () => {
+  it('creates a task with a trimmed title', () => {
     const t = newTask('  Water plants  ');
     expect(t.title).toBe('Water plants');
-    expect(ANIMALS[t.animal]).toBeDefined();
     expect(t.completedAt).toBeNull();
   });
 

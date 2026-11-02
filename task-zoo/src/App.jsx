@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
-import { AnimalSprite } from './components/animals/AnimalSprite.jsx';
 import { loadTasks, newTask, removeTask, saveTasks, toggleDone } from './lib/tasks.js';
 
 function TaskRow({ task, onToggle, onRemove }) {
   const done = !!task.completedAt;
   return (
     <li className={`row ${done ? 'row--done' : ''}`}>
-      <AnimalSprite animal={task.animal} stage={done ? 2 : 0} size={56} />
-      <span className="row-title">{task.title}</span>
       <button
         className={`check ${done ? 'check--on' : ''}`}
         onClick={() => onToggle(task.id)}
         aria-label={done ? `Mark “${task.title}” as not done` : `Finish “${task.title}”`}
       />
+      <span className="row-title">{task.title}</span>
       <button className="remove" onClick={() => onRemove(task.id)} aria-label={`Delete “${task.title}”`}>
         ×
       </button>
@@ -43,7 +41,7 @@ export function App() {
 
   return (
     <main className="page">
-      <h1>To Zoo List</h1>
+      <h1>To Do List</h1>
 
       <form className="add" onSubmit={add}>
         <input
@@ -57,7 +55,7 @@ export function App() {
       </form>
 
       {open.length === 0 && done.length === 0 && (
-        <p className="empty">Add a task and a baby animal will keep you company until it’s done.</p>
+        <p className="empty">Nothing to do yet. Add your first task above.</p>
       )}
 
       <ul className="list">

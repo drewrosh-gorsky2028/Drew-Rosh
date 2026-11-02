@@ -1,14 +1,12 @@
-# To Zoo List
+# To Do List
 
-A simple to-do list where every task has an animal.
+A simple to-do list.
 
-- Type a task and press **Add**. A random baby animal appears next to it.
-- Tap the circle to finish it. The animal grows up and the task moves to **Done**.
+- Type a task and press **Add**.
+- Tap the circle to finish it. It moves to **Done**.
 - Tap the circle again to undo, or **×** to delete.
 
-Your list is saved in your browser's `localStorage`. All animals are hand-drawn SVG in the code, with no image files.
-
-We're building this piece by piece. Subtasks, a zoo view, coins and decorations were in an earlier version and can come back one at a time (see git history).
+Your list is saved in your browser's `localStorage`, so it's still there next time you open the page on the same device and browser.
 
 ## Run it locally
 
@@ -44,11 +42,11 @@ Or drag the `task-zoo/dist` folder onto <https://app.netlify.com/drop> after run
 
 ### GitHub Pages
 
-The workflow at `.github/workflows/deploy-pages.yml` publishes the whole repo: Flappy Dox at `/` and To Zoo List at `/task-zoo/`.
+The workflow at `.github/workflows/deploy-pages.yml` publishes the whole repo: Flappy Dox at `/` and the to-do list at `/task-zoo/`.
 
 1. In the GitHub repo, go to **Settings → Pages** and set **Source** to **GitHub Actions**.
 2. Go to **Actions → Deploy to GitHub Pages → Run workflow**.
-3. To Zoo List will be at `https://<your-username>.github.io/<repo>/task-zoo/`.
+3. The list will be at `https://<your-username>.github.io/<repo>/task-zoo/`.
 
 To deploy on every push to `main`, uncomment the `push:` lines in the workflow.
 
@@ -58,21 +56,15 @@ To deploy on every push to `main`, uncomment the `push:` lines in the workflow.
 
 ```
 src/
-  main.jsx                 entry point
-  App.jsx                  the whole screen: add form, task list, done list
-  styles.css               all styling
-  lib/tasks.js             create / finish / delete tasks, load and save
-  lib/id.js                ids and random picks
-  components/animals/      one drawing per animal, the registry (index.js), AnimalSprite
+  main.jsx        entry point
+  App.jsx         the whole screen: add form, task list, done list
+  styles.css      all styling
+  lib/tasks.js    create / finish / delete tasks, load and save
+  lib/id.js       unique ids
 ```
 
-Saved data (`localStorage["to-zoo-list:v1"]`):
+Saved data (`localStorage["to-zoo-list:v1"]`, the key is from the app's earlier name):
 
 ```js
-{ version: 1, tasks: [{ id, title, animal: 'panda', createdAt, completedAt /* null until done */ }] }
+{ version: 1, tasks: [{ id, title, createdAt, completedAt /* null until done */ }] }
 ```
-
-### Add a new animal
-
-1. Draw a component in `components/animals/small.jsx`, `medium.jsx` or `large.jsx`. It gets `stage` (0 baby, 2 grown-up). Draw in a 120×120 box with the feet near `y = 112`, using the helpers in `parts.jsx` (`Eye`, `Blush`, `Smile`, `Tube`, `line`).
-2. Register it in `components/animals/index.js`.
